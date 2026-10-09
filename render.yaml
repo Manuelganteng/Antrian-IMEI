@@ -1,0 +1,29 @@
+# Creates a PAID web service with persistent storage. Review costs in Render before applying.
+services:
+  - type: web
+    name: antrian-imei
+    runtime: docker
+    plan: starter
+    region: singapore
+    numInstances: 1
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    disk:
+      name: antrian-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: file:/data/antrian.db
+      - key: APP_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "false"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Administrator

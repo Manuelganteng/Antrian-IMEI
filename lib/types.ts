@@ -1,0 +1,9 @@
+export type User = { id: string; name: string; email: string; role: string; active: boolean };
+export type Service = { id: string; name: string; prefix: string; active: boolean };
+export type Counter = { id: string; name: string; active: boolean };
+export type Settings = { institution: string; logoUrl: string; openingTime: string; closingTime: string; dailyLimit: number; enabled: boolean };
+export type PublicData = { settings: Settings; services: Service[]; active: { code: string; status: string; serviceName: string; counter: { name: string } | null }[]; waiting: { code: string; serviceId: string; serviceName: string }[]; waitingCount: number; waitingByService: Record<string, number>; total: number; events: { id: number; counterName: string | null; queue: { code: string } }[]; cursor: number; day: string; serverTime: string };
+export type StaffQueue = { id: string; code: string; name: string; serviceId: string; serviceName: string; status: string; counterId: string | null; assignedUserId: string | null; createdAt: string };
+export type StaffData = { user: User; counters: Counter[]; services: Service[]; queues: StaffQueue[]; ownActive: StaffQueue | null };
+export type AdminData = { users: User[]; counters: Counter[]; services: Service[]; settings: Settings; counts: Record<string, number> };
+export type HistoryRow = { id: string; code: string; name: string; phone: string | null; serviceName: string; status: string; createdAt: string; counter: { name: string } | null; events: { id: number; action: string; status: string; counterName: string | null; createdAt: string; user: { name: string } | null }[] };

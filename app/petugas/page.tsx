@@ -1,0 +1,25 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { BellRing, Play, Check, SkipForward, Megaphone, RotateCcw } from 'lucide-react';
+import { api, Badge, Empty, Loading, Notice, Shell, usePoll } from '@/components/ui';
+import type { StaffData } from '@/lib/types';
+export default function StaffPage() {
+  const { data, loading, error, refresh } = usePoll<StaffData>('staff', 3000);
+  const [counterId, setCounterId] = useState(''), [serviceId, setServiceId] = useState(''), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [actionError, setActionError] = useState('');
+  useEffect(() => { if (data?.ownActive) { setCounterId(data.ownActive.counterId || ''); setServiceId(data.ownActive.serviceId); } }, [data]);
+  const active = data?.ownActive;
+  const waiting = data?.queues.filter(q => q.serviceId === serviceId && q.status === 'WAITING') || [];
+  const skipped = data?.queues.filter(q => q.serviceId === serviceId && q.status === 'SKIPPED') || [];
+  async function act(action: string, queueId?: string) {
+    setBusy(true); setMessage(''); setActionError('');
+    try { const result = await api<{ code: string }>('staff/action', { action, counterId, serviceId, queueId }); setMessage(`Antrian ${result.code} berhasil diperbarui.`); await refresh(); }
+    catch (e) { setActionError((e as Error).message); await refresh(); }
+    finally { setBusy(false); }
+  }
+  return <Shell title="Dashboard petugas" subtitle={data ? `Selamat bertugas, ${data.user.name}. Pilih loket dan layanan Anda.` : 'Siapkan loket untuk memulai pelayanan.'} privatePage><Notice>{error || actionError}</Notice><Notice success>{message}</Notice>{loading && !data ? <Loading/> : data && <>
+    <section className="card toolbar"><label className="field">Loket pelayanan<select value={counterId} onChange={e => setCounterId(e.target.value)} disabled={!!active || busy}><option value="">Pilih loket</option>{data.counters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label className="field">Jenis layanan<select value={serviceId} onChange={e => setServiceId(e.target.value)} disabled={!!active || busy}><option value="">Pilih layanan</option>{data.services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label><div className="toolbar-meta"><strong>{waiting.length}</strong><span>antrian menunggu</span></div></section>
+    <div className="staff-grid"><section className="card active-queue"><span className="eyebrow">ANTRIAN YANG ANDA TANGANI</span>{active ? <><div className="active-number">{active.code}</div><h2>{active.name}</h2><p>{active.serviceName}</p><Badge status={active.status}/><div className="action-grid">{active.status === 'CALLED' && <><button disabled={busy} className="secondary" onClick={() => act('RECALL', active.id)}><BellRing size={19}/>Panggil ulang</button><button disabled={busy} className="primary" onClick={() => act('START', active.id)}><Play size={19}/>Mulai pelayanan</button></>}{active.status === 'SERVING' && <button disabled={busy} className="primary" onClick={() => act('DONE', active.id)}><Check size={19}/>Selesai</button>}<button disabled={busy} className="warning" onClick={() => { if (confirm(`Lewati antrian ${active.code}? Nomor ini dapat dipanggil kembali.`)) void act('SKIP', active.id); }}><SkipForward size={19}/>Lewati</button></div></> : <><Empty>{counterId && serviceId ? 'Siap melayani pengunjung berikutnya.' : 'Pilih loket dan layanan terlebih dahulu.'}</Empty><button className="primary full" disabled={busy || !counterId || !serviceId || !waiting.length} onClick={() => act('NEXT')}><Megaphone size={20}/>{busy ? 'Memanggil…' : 'Panggil berikutnya'}</button></>}</section>
+    <section className="card"><div className="section-title"><h2>Daftar antrian</h2><span className="subtle-pill">Diperbarui otomatis</span></div>{!waiting.length ? <Empty>Belum ada antrian menunggu untuk layanan ini.</Empty> : <div className="queue-list">{waiting.map(q => <div className="queue-row" key={q.id}><strong className="queue-code">{q.code}</strong><div><strong>{q.name}</strong><small>{q.serviceName}</small></div><Badge status={q.status}/></div>)}</div>}<h3 className="divided">Dilewati ({skipped.length})</h3>{!skipped.length ? <p className="muted">Tidak ada antrian yang dilewati.</p> : skipped.map(q => <div className="queue-row" key={q.id}><strong className="queue-code">{q.code}</strong><span>{q.name}</span><button className="secondary compact" disabled={busy || !!active || !counterId} onClick={() => act('RESTORE', q.id)}><RotateCcw size={16}/>Panggil kembali</button></div>)}</section></div>
+    <section className="card other-counters"><h2>Aktivitas loket</h2><div className="counter-grid">{data.counters.map(c => { const q = data.queues.find(q => q.counterId === c.id && ['CALLED', 'SERVING'].includes(q.status)); return <div className="counter-mini" key={c.id}><span>{c.name}</span><strong>{q?.code || '—'}</strong>{q ? <Badge status={q.status}/> : <small>Siap melayani</small>}</div>; })}</div></section>
+  </>}</Shell>;
+}

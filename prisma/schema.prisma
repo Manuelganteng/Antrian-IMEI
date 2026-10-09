@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role String @default("STAFF")
+  active Boolean @default(true)
+  sessions Session[]
+  events QueueEvent[]
+}
+model Session {
+  id String @id
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+}
+model Service {
+  id String @id @default(cuid())
+  name String
+  prefix String @unique
+  active Boolean @default(true)
+  queues Queue[]
+  sequences DailySequence[]
+}
+model Counter {
+  id String @id @default(cuid())
+  name String @unique
+  active Boolean @default(true)
+  queues Queue[]
+  events QueueEvent[]
+}
+model Settings {
+  id Int @id @default(1)
+  institution String @default("Pusat Layanan IMEI")
+  logoUrl String @default("")
+  openingTime String @default("08:00")
+  closingTime String @default("16:00")
+  dailyLimit Int @default(300)
+  enabled Boolean @default(true)
+  lockVersion Int @default(0)
+}
+model DailySequence {
+  id String @id @default(cuid())
+  day String
+  serviceId String
+  service Service @relation(fields: [serviceId], references: [id])
+  value Int @default(0)
+  @@unique([day, serviceId])
+}
+model Queue {
+  id String @id @default(cuid())
+  token String @unique
+  day String
+  number Int
+  code String
+  name String
+  phone String?
+  status String @default("WAITING")
+  serviceId String
+  service Service @relation(fields: [serviceId], references: [id])
+  serviceName String
+  counterId String?
+  counter Counter? @relation(fields: [counterId], references: [id])
+  assignedUserId String?
+  activeCounterKey String? @unique
+  activeUserKey String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events QueueEvent[]
+  @@unique([day, serviceId, number])
+  @@unique([day, code])
+  @@index([day, status, serviceId, createdAt])
+}
+model QueueEvent {
+  id Int @id @default(autoincrement())
+  queueId String
+  queue Queue @relation(fields: [queueId], references: [id])
+  action String
+  status String
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  counterId String?
+  counter Counter? @relation(fields: [counterId], references: [id])
+  counterName String?
+  createdAt DateTime @default(now())
+  @@index([action, id])
+}
+model RateBucket {
+  id String @id
+  count Int @default(0)
+  expiresAt DateTime
+}
